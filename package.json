@@ -1,0 +1,33 @@
+{
+  "name": "tangojs-connector-mtango",
+  "version": "0.3.0",
+  "description": "mTango backend support for TangoJS.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "compile": "rollup --config ./.rollup.config.js",
+    "prepublish": "npm run compile",
+    "preversion": "npm run compile",
+    "postversion": "git push && git push --tags"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tangojs/tangojs-connector-mtango.git"
+  },
+  "keywords": [
+    "tango",
+    "tangojs",
+    "mtango"
+  ],
+  "author": "mliszcz",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tangojs/tangojs-connector-mtango/issues"
+  },
+  "homepage": "https://github.com/tangojs/tangojs-connector-mtango#readme",
+  "devDependencies": {
+    "eslint": "^2.8.0",
+    "rollup": "^0.26.0",
+    "tangojs-core": "^0.3.0"
+  }
+}
