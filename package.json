@@ -28,7 +28,7 @@
   "devDependencies": {
     "eslint": "^2.8.0",
     "rollup": "^0.26.0",
-    "tangojs-core": "^0.3.0"
+    "tangojs-core": "^0.4.0"
   },
   "dependencies": {
     "btoa": "^1.1.2",
