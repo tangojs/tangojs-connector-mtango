@@ -7,10 +7,14 @@ export default {
   moduleName: 'tangojs.connector.mtango',
   plugins: [],
   external: [
-    'tangojs-core'
+    'tangojs-core',
+    'node-fetch',
+    'btoa'
   ],
   globals: {
-    'tangojs-core': 'tangojs'
+    'tangojs-core': 'tangojs.core',
+    'node-fetch': 'fetch',
+    'btoa': 'btoa'
   },
   sourceMap: true
 }
