@@ -28,6 +28,7 @@
   "homepage": "https://github.com/tangojs/tangojs-connector-mtango#readme",
   "devDependencies": {
     "eslint": "^2.8.0",
+    "eslint-plugin-react": "^6.1.2",
     "rollup": "^0.26.0",
     "tangojs-core": "^0.4.0"
   },

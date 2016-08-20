@@ -3,14 +3,6 @@ import * as tangojs from 'tangojs-core'
 import * as fetchFn from 'node-fetch'
 import * as btoaFn from 'btoa'
 
-function normalizeAttrQuality (quality) {
-  if (quality) {
-    return tangojs.tango.AttrQuality[`ATTR_${quality}`]
-  } else {
-    return tangojs.tango.AttrQuality.ATTR_INVALID
-  }
-}
-
 function convertTypeToAttributeDataType (type) {
   // TODO: handle ATT_STATE, DEVICE_STATE
   const ADT = tangojs.tango.AttributeDataType
@@ -170,8 +162,8 @@ export class MTangoConnector extends tangojs.Connector {
     // FIXME handle pattern
     return this._fetch('get', `devices/${devname}/properties`)
           .then(properties => {
-        return properties.map(p => p.name)
-})
+            return properties.map(p => p.name)
+          })
   }
 
   /**
@@ -193,6 +185,7 @@ export class MTangoConnector extends tangojs.Connector {
    */
   put_device_property (devname, properties) {
     devname, properties
+    // FIXME Promise.all put each property
     throw new Error('not implemented yet')
   }
 
@@ -202,7 +195,7 @@ export class MTangoConnector extends tangojs.Connector {
    * @return {Promise<undefined,Error>}
    */
   delete_device_property (devname, propname) {
-    devname, propnames
+    devname, propname
     return this._fetch('delete', `devices/${devname}/properties/${propname}`)
   }
 
@@ -229,17 +222,17 @@ export class MTangoConnector extends tangojs.Connector {
 
     const getOr = (val, ctor) => val ? ctor[val] : val
 
-    var attnames = attnames.map(a => { `attr=${a}` }).join('&')
+    const atts = attnames.map(a => { `attr=${a}` }).join('&')
 
-  return this._fetch('get', `devices/${devname}/attributes/info?${attnames}`)
-    .then(infos => infos.map( info => {
+    return this._fetch('get', `devices/${devname}/attributes/info?${atts}`)
+      .then(infos => infos.map( info => {
         return new tangojs.api.AttributeInfo(Object.assign(info, {
           writable: getOr(info.writable, tangojs.tango.AttrWriteType),
           data_format: getOr(info.data_format, tangojs.tango.AttrDataFormat),
           level: getOr(info.level, tangojs.tango.DispLevel),
-            data_type: convertTypeToAttributeDataType(info.data_type),
-            att_alarm: new tangojs.tango.AttributeAlarm(info.att_alarm),
-            event_prop: new tangojs.tango.EventProperties(info.event_prop)
+          data_type: convertTypeToAttributeDataType(info.data_type),
+          att_alarm: new tangojs.tango.AttributeAlarm(info.att_alarm),
+          event_prop: new tangojs.tango.EventProperties(info.event_prop)
         }))
       }))
   }
@@ -251,19 +244,19 @@ export class MTangoConnector extends tangojs.Connector {
    */
   read_device_attribute (devname, attnames) {
 
-  var attnames = attnames.map(a => { `attr=${a}` }).join('&')
+    const atts = attnames.map(a => { `attr=${a}` }).join('&')
     // http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/sys/tg_test/1/attributes/value?attr=long_scalar
-  return this._fetch('get', `devices/${devname}/attributes/value?${attnames}`)
+    return this._fetch('get', `devices/${devname}/attributes/value?${atts}`)
       .then(values => values.map( value => {
         return new tangojs.api.DeviceAttribute(Object.assign(value, {
-          quality: normalizeAttrQuality(value.quality),
+          quality: tangojs.tango.AttrQuality[value.quality],
           time: {
             tv_sec: 0,
             tv_usec: 0,
             tv_nsec: 0
           } // FIXME convert timestamp
         }))
-        }))
+      }))
   }
 
   /**
@@ -275,18 +268,18 @@ export class MTangoConnector extends tangojs.Connector {
 
     // PUT http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/sys/tg_test/1/attributes/values?long_scalar=xx
 
-    const nvList = attrs.map(a => `${a.name}=${a.value}`).join('&')
-  return this._fetch('put', `devices/${devname}/attributes/value?${nvList}`)
+    const atts = attrs.map(a => `${a.name}=${a.value}`).join('&')
+    return this._fetch('put', `devices/${devname}/attributes/value?${atts}`)
       .then(values => values.map( value => {
-          return new tangojs.api.DeviceAttribute(Object.assign(value, {
-            quality: value.quality,
-            time: {
-              tv_sec: 0,
-              tv_usec: 0,
-              tv_nsec: 0
-            } // FIXME convert timestamp
-          }))
+        return new tangojs.api.DeviceAttribute(Object.assign(value, {
+          quality: tangojs.tango.AttrQuality[value.quality],
+          time: {
+            tv_sec: 0,
+            tv_usec: 0,
+            tv_nsec: 0
+          } // FIXME convert timestamp
         }))
+      }))
   }
 
   /**
@@ -310,10 +303,8 @@ export class MTangoConnector extends tangojs.Connector {
     // PUT http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/sys/tg_test/1/commands/State?input
     // FIXME handle result
 
-    const input = argin ? `?input=${argin.value}` : ''
-  // FIXME pass argin as body
-    //return this._fetch('put', `devices/${devname}/commands/${cmdname}${input}`)
-  throw new Error('not implemented yet')
+    const input = argin ? argin.value : ''
+    return this._fetch('put', `devices/${devname}/commands/${cmdname}`, input)
   }
 
   /**
