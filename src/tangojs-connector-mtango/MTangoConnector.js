@@ -63,6 +63,7 @@ export class MTangoConnector extends tangojs.Connector {
     return fetchFn(`${this._endpoint}/${address}`, {
       method: method,
       mode: 'cors',
+      credentials: 'include',
       headers: this._headers,
       body
     }).then(response => {
