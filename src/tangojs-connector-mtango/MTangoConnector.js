@@ -11,6 +11,26 @@ function normalizeAttrQuality (quality) {
   }
 }
 
+function convertTypeToAttributeDataType (type) {
+  // TODO: handle ATT_STATE, DEVICE_STATE
+  const ADT = tangojs.tango.AttributeDataType
+  switch (type) {
+    case 'DevBoolean': return ADT.ATT_BOOL.value
+    case 'DevShort': return ADT.ATT_SHORT.value
+    case 'DevLong': return ADT.ATT_LONG.value
+    case 'DevLong64': return ADT.ATT_LONG64.value
+    case 'DevFloat': return ADT.ATT_FLOAT.value
+    case 'DevDouble': return ADT.ATT_DOUBLE.value
+    case 'DevUChar': return ADT.ATT_UCHAR.value
+    case 'DevUShort': return ADT.ATT_USHORT.value
+    case 'DevULong': return ADT.ATT_ULONG.value
+    case 'DevULong64': return ADT.ATT_ULONG64.value
+    case 'DevString': return ADT.ATT_STRING.value
+    case 'DevEncoded': return ADT.ATT_ENCODED.value
+    default: return ADT.ATT_NO_DATA.value
+  }
+}
+
 const isResponse = object => object.status && Number.isInteger(object.status)
 
 export class MTangoConnector extends tangojs.Connector {
@@ -41,11 +61,12 @@ export class MTangoConnector extends tangojs.Connector {
    * @return {Promise<Response,Error>}
    * @private
    */
-  _fetch (method, address) {
+  _fetch (method, address, body = undefined) {
     return fetchFn(`${this._endpoint}/${address}`, {
       method: method,
       mode: 'cors',
-      headers: this._headers
+      headers: this._headers,
+      body
     }).then(response => {
       return response.ok ? response.json() : Promise.reject(response)
     }).catch(error => {
@@ -216,8 +237,9 @@ export class MTangoConnector extends tangojs.Connector {
           writable: getOr(info.writable, tangojs.tango.AttrWriteType),
           data_format: getOr(info.data_format, tangojs.tango.AttrDataFormat),
           level: getOr(info.level, tangojs.tango.DispLevel),
-          att_alarm: info.alarms,
-          event_prop: info.events
+            data_type: convertTypeToAttributeDataType(info.data_type),
+            att_alarm: new tangojs.tango.AttributeAlarm(info.att_alarm),
+            event_prop: new tangojs.tango.EventProperties(info.event_prop)
         }))
       }))
   }
