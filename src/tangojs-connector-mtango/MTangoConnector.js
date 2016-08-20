@@ -3,6 +3,14 @@ import * as tangojs from 'tangojs-core'
 import * as fetchFn from 'node-fetch'
 import * as btoaFn from 'btoa'
 
+function normalizeAttrQuality (quality) {
+  if (quality) {
+    return tangojs.tango.AttrQuality[`ATTR_${quality}`]
+  } else {
+    return tangojs.tango.AttrQuality.ATTR_INVALID
+  }
+}
+
 function convertTypeToAttributeDataType (type) {
   // TODO: handle ATT_STATE, DEVICE_STATE
   const ADT = tangojs.tango.AttributeDataType
@@ -159,12 +167,12 @@ export class MTangoConnector extends tangojs.Connector {
   get_device_property_list (devname, pattern) {
     // http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/test/rest/1/properties
     // returns error
-    devname, pattern
+    pattern
     // FIXME handle pattern
     return this._fetch('get', `devices/${devname}/properties`)
-          .then(properties => {
-            return properties.map(p => p.name)
-          })
+      .then(properties => {
+        return properties.map(p => p.name)
+      })
   }
 
   /**
@@ -196,7 +204,6 @@ export class MTangoConnector extends tangojs.Connector {
    * @return {Promise<undefined,Error>}
    */
   delete_device_property (devname, propname) {
-    devname, propname
     return this._fetch('delete', `devices/${devname}/properties/${propname}`)
   }
 
@@ -223,7 +230,7 @@ export class MTangoConnector extends tangojs.Connector {
 
     const getOr = (val, ctor) => val ? ctor[val] : val
 
-    const atts = attnames.map(a => { `attr=${a}` }).join('&')
+    const atts = attnames.map(a => `attr=${a}`).join('&')
 
     return this._fetch('get', `devices/${devname}/attributes/info?${atts}`)
       .then(infos => infos.map( info => {
@@ -245,12 +252,12 @@ export class MTangoConnector extends tangojs.Connector {
    */
   read_device_attribute (devname, attnames) {
 
-    const atts = attnames.map(a => { `attr=${a}` }).join('&')
+    const atts = attnames.map(a => `attr=${a}`).join('&')
     // http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/sys/tg_test/1/attributes/value?attr=long_scalar
     return this._fetch('get', `devices/${devname}/attributes/value?${atts}`)
       .then(values => values.map( value => {
         return new tangojs.api.DeviceAttribute(Object.assign(value, {
-          quality: tangojs.tango.AttrQuality[value.quality],
+          quality: normalizeAttrQuality(value.quality),
           time: {
             tv_sec: 0,
             tv_usec: 0,
@@ -273,7 +280,7 @@ export class MTangoConnector extends tangojs.Connector {
     return this._fetch('put', `devices/${devname}/attributes/value?${atts}`)
       .then(values => values.map( value => {
         return new tangojs.api.DeviceAttribute(Object.assign(value, {
-          quality: tangojs.tango.AttrQuality[value.quality],
+          quality: normalizeAttrQuality(value.quality),
           time: {
             tv_sec: 0,
             tv_usec: 0,
