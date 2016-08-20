@@ -16,13 +16,15 @@ const isResponse = object => object.status && Number.isInteger(object.status)
 export class MTangoConnector extends tangojs.Connector {
 
   /**
-   * @param {string} endpoint
+   * @param {string} endpoint - http://{host}/tango/rest/rc3
+   * @param {string} tango_host host name
+   * @param {string} tango_port port number
    * @param {string} username
    * @param {string} password
    */
-  constructor (endpoint, username, password) {
+  constructor (endpoint, tango_host, tango_port, username, password) {
     super()
-    this._endpoint = endpoint
+    this._endpoint = `${endpoint}/hosts/${tango_host}/${tango_port}`
     this._username = username
     this._password = password
 
@@ -62,7 +64,7 @@ export class MTangoConnector extends tangojs.Connector {
    */
   get_device_status (devname) {
 
-    // 'http://localhost:8080/mtango/rest/rc2/devices/sys/tg_test/1/state'
+    // 'http://localhost:8080/tango/rest/rc3/hosts/localhost/10000/devices/sys/tg_test/1/state'
 
     return this._fetch('get', `devices/${devname}/state`)
       .then(state => state.status)
@@ -74,7 +76,7 @@ export class MTangoConnector extends tangojs.Connector {
    */
   get_device_state (devname) {
 
-    // 'http://localhost:8080/mtango/rest/rc2/devices/sys/tg_test/1/state'
+    // 'http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/sys/tg_test/1/state'
 
     return this._fetch('get', `devices/${devname}/state`)
       .then(state => tangojs.tango.DevState[state.state])
@@ -86,7 +88,7 @@ export class MTangoConnector extends tangojs.Connector {
    */
   get_device_info (devname) {
 
-    // http://localhost:8080/mtango/rest/rc2/devices/sys/tg_test/1
+    // http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/sys/tg_test/1
 
     return this._fetch('get', `devices/${devname}`)
       .then(device => new tangojs.api.DeviceInfo(device.info))
@@ -99,7 +101,7 @@ export class MTangoConnector extends tangojs.Connector {
   get_device_list (pattern) {
 
     pattern
-    // http://localhost:8080/mtango/rest/rc2/devices
+    // http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices
     // FIXME handle pattern
 
     return this._fetch('get', 'devices')
@@ -141,10 +143,14 @@ export class MTangoConnector extends tangojs.Connector {
    * @return {Promise<string[],Error>}
    */
   get_device_property_list (devname, pattern) {
-    // http://localhost:8080/mtango/rest/rc2/devices/test/rest/1/properties
+    // http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/test/rest/1/properties
     // returns error
     devname, pattern
-    throw new Error('not implemented yet')
+    // FIXME handle pattern
+    return this._fetch('get', `devices/${devname}/properties`)
+          .then(properties => {
+        return properties.map(p => p.name)
+})
   }
 
   /**
@@ -171,12 +177,12 @@ export class MTangoConnector extends tangojs.Connector {
 
   /**
    * @param {string} devname
-   * @param {string[]} propnames
+   * @param {string} propname
    * @return {Promise<undefined,Error>}
    */
-  delete_device_property (devname, propnames) {
+  delete_device_property (devname, propname) {
     devname, propnames
-    throw new Error('not implemented yet')
+    return this._fetch('delete', `devices/${devname}/properties/${propname}`)
   }
 
   /**
@@ -185,7 +191,7 @@ export class MTangoConnector extends tangojs.Connector {
    */
   get_device_attribute_list (devname) {
 
-    // http://localhost:8080/mtango/rest/rc2/devices/test/rest/1/attributes
+    // http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/test/rest/1/attributes
 
     return this._fetch('get', `devices/${devname}/attributes`)
       .then(attributes => attributes.map(a => a.name))
@@ -198,22 +204,22 @@ export class MTangoConnector extends tangojs.Connector {
    */
   get_device_attribute_info (devname, attnames) {
 
-    // http://localhost:8080/mtango/rest/rc2/devices/test/rest/1/attributes/staticValueExpirationDelay/info
+    // http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/test/rest/1/attributes/staticValueExpirationDelay/info
 
     const getOr = (val, ctor) => val ? ctor[val] : val
 
-    return Promise.all(attnames.map(n => {
-      return this._fetch('get', `devices/${devname}/attributes/${n}/info`)
-        .then(info => {
-          return new tangojs.api.AttributeInfo(Object.assign(info, {
-            writable: getOr(info.writable, tangojs.tango.AttrWriteType),
-            data_format: getOr(info.data_format, tangojs.tango.AttrDataFormat),
-            level: getOr(info.level, tangojs.tango.DispLevel),
-            att_alarm: info.att_alarm, // FIXME AttributeAlarm missing,
-            event_prop: info.event_prop // FIXME EventProperties missing
-          }))
-        })
-    }))
+    var attnames = attnames.map(a => { `attr=${a}` }).join('&')
+
+  return this._fetch('get', `devices/${devname}/attributes/info?${attnames}`)
+    .then(infos => infos.map( info => {
+        return new tangojs.api.AttributeInfo(Object.assign(info, {
+          writable: getOr(info.writable, tangojs.tango.AttrWriteType),
+          data_format: getOr(info.data_format, tangojs.tango.AttrDataFormat),
+          level: getOr(info.level, tangojs.tango.DispLevel),
+          att_alarm: info.alarms,
+          event_prop: info.events
+        }))
+      }))
   }
 
   /**
@@ -223,21 +229,19 @@ export class MTangoConnector extends tangojs.Connector {
    */
   read_device_attribute (devname, attnames) {
 
-    // http://localhost:8080/mtango/rest/rc2/devices/sys/tg_test/1/attributes/long_scalar/value
-
-    return Promise.all(attnames.map(n => {
-      return this._fetch('get', `devices/${devname}/attributes/${n}/value`)
-        .then(value => {
-          return new tangojs.api.DeviceAttribute(Object.assign(value, {
-            quality: normalizeAttrQuality(value.quality),
-            time: {
-              tv_sec: 0,
-              tv_usec: 0,
-              tv_nsec: 0
-            } // FIXME convert timestamp
-          }))
-        })
-    }))
+  var attnames = attnames.map(a => { `attr=${a}` }).join('&')
+    // http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/sys/tg_test/1/attributes/value?attr=long_scalar
+  return this._fetch('get', `devices/${devname}/attributes/value?${attnames}`)
+      .then(values => values.map( value => {
+        return new tangojs.api.DeviceAttribute(Object.assign(value, {
+          quality: normalizeAttrQuality(value.quality),
+          time: {
+            tv_sec: 0,
+            tv_usec: 0,
+            tv_nsec: 0
+          } // FIXME convert timestamp
+        }))
+        }))
   }
 
   /**
@@ -247,13 +251,20 @@ export class MTangoConnector extends tangojs.Connector {
    */
   write_device_attribute (devname, attrs) {
 
-    // PUT http://localhost:8080/mtango/rest/rc2/devices/sys/tg_test/1/attributes/long_scalar?value=xx
+    // PUT http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/sys/tg_test/1/attributes/values?long_scalar=xx
 
-    const nvList = attrs.map(a => [a.name, a.value])
-
-    return Promise.all(nvList.map(([name, value]) => {
-      this._fetch('put', `devices/${devname}/attributes/${name}?value=${value}`)
-    }))
+    const nvList = attrs.map(a => `${a.name}=${a.value}`).join('&')
+  return this._fetch('put', `devices/${devname}/attributes/value?${nvList}`)
+      .then(values => values.map( value => {
+          return new tangojs.api.DeviceAttribute(Object.assign(value, {
+            quality: value.quality,
+            time: {
+              tv_sec: 0,
+              tv_usec: 0,
+              tv_nsec: 0
+            } // FIXME convert timestamp
+          }))
+        }))
   }
 
   /**
@@ -263,7 +274,7 @@ export class MTangoConnector extends tangojs.Connector {
    */
   write_read_device_attribute (devname, attrs) {
     attrs
-    throw new Error('not implemented yet')
+    return this.write_device_attribute(devname, attrs)
   }
 
   /**
@@ -274,11 +285,13 @@ export class MTangoConnector extends tangojs.Connector {
    */
   device_command_inout (devname, cmdname, argin) {
 
-    // PUT http://localhost:8080/mtango/rest/rc2/devices/sys/tg_test/1/commands/State?input
+    // PUT http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/sys/tg_test/1/commands/State?input
     // FIXME handle result
 
     const input = argin ? `?input=${argin.value}` : ''
-    return this._fetch('put', `devices/${devname}/commands/${cmdname}${input}`)
+  // FIXME pass argin as body
+    //return this._fetch('put', `devices/${devname}/commands/${cmdname}${input}`)
+  throw new Error('not implemented yet')
   }
 
   /**
@@ -288,7 +301,7 @@ export class MTangoConnector extends tangojs.Connector {
    */
   device_command_query (devname, cmdname) {
 
-    // http://localhost:8080/mtango/rest/rc2/devices/sys/tg_test/1/commands/State
+    // http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/sys/tg_test/1/commands/State
 
     return this._fetch('get', `devices/${devname}/commands/${cmdname}`)
       .then(({info}) => {
@@ -306,7 +319,7 @@ export class MTangoConnector extends tangojs.Connector {
    */
   device_command_list_query (devname) {
 
-    // http://localhost:8080/mtango/rest/rc2/devices/sys/tg_test/1/commands
+    // http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/sys/tg_test/1/commands
 
     return this._fetch('get', `devices/${devname}/commands`)
       .then(cmdList => {
