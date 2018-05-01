@@ -93,6 +93,17 @@ export class MTangoConnector extends tangojs.Connector {
   }
 
   /**
+   * @return {Promise<string,Error>}
+   */
+  get_database () {
+
+    // http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/
+
+    return this._fetch('get', '')
+      .then(info => info.name)
+  }
+
+  /**
    * @param {string} devname
    * @return {Promise<string,Error>}
    */
