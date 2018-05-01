@@ -57,15 +57,21 @@ export class MTangoConnector extends tangojs.Connector {
   constructor (endpoint, tango_host, tango_port, username, password) {
     super()
     this._hosts_endpoint = `${endpoint}/hosts`
-
     // Define the Tango Host
-    if (tango_host === undefined) {
-      this._default_tango_host().then( host => { this._endpoint = host } )
+      if (tango_host === undefined) {
+        this._init = this._default_tango_host()
+             .then( host => { 
+               this._endpoint = host 
+             })
+             .then( result => { return this } )
 
-    } else {
-      this._endpoint = `${this._hosts_endpoint}/${tango_host}/${tango_port}`
-    }
-    console.log(this._endpoint)
+      } else {
+        this._init = new Promise( (resolve, reject) => {
+            this.set_tango_host(tango_host, tango_port)
+            resolve(this)
+        })
+      }
+
     this._username = username
     this._password = password
 
@@ -74,6 +80,22 @@ export class MTangoConnector extends tangojs.Connector {
     this._headers = {
       'Authorization': `Basic ${authorization}`
     }
+  }
+
+  /**
+   * Asynchronous way to wait for the connection
+   *
+   */
+  init () {
+    return this._init
+  }
+
+  /**
+   * @param {string} tango_host host name
+   * @param {string} tango_port port number
+   */
+  set_tango_host (tango_host, tango_port) {
+    this._endpoint = `${this._hosts_endpoint}/${tango_host}/${tango_port}`
   }
 
   /**
