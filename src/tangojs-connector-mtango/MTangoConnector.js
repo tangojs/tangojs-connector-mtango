@@ -56,7 +56,22 @@ export class MTangoConnector extends tangojs.Connector {
    */
   constructor (endpoint, tango_host, tango_port, username, password) {
     super()
-    this._endpoint = `${endpoint}/hosts/${tango_host}/${tango_port}`
+    this._hosts_endpoint = `${endpoint}/hosts`
+    // Define the Tango Host
+      if (tango_host === undefined) {
+        this._init = this._default_tango_host()
+             .then( host => { 
+               this._endpoint = host 
+             })
+             .then( result => { return this } )
+
+      } else {
+        this._init = new Promise( (resolve, reject) => {
+            this.set_tango_host(tango_host, tango_port)
+            resolve(this)
+        })
+      }
+
     this._username = username
     this._password = password
 
@@ -68,13 +83,31 @@ export class MTangoConnector extends tangojs.Connector {
   }
 
   /**
+   * Asynchronous way to wait for the connection
+   *
+   */
+  init () {
+    return this._init
+  }
+
+  /**
+   * @param {string} tango_host host name
+   * @param {string} tango_port port number
+   */
+  set_tango_host (tango_host, tango_port) {
+    this._endpoint = `${this._hosts_endpoint}/${tango_host}/${tango_port}`
+  }
+
+  /**
    * @param {string} method
    * @param {string} address
    * @return {Promise<Response,Error>}
    * @private
    */
-  _fetch (method, address, body = undefined) {
-    return fetchFn(`${this._endpoint}/${address}`, {
+  _fetch (method, address, body = undefined, endpoint=undefined) {
+    if (endpoint === undefined)
+        endpoint = this._endpoint;
+    return fetchFn(`${endpoint}/${address}`, {
       method: method,
       mode: 'cors',
       credentials: 'include',
@@ -90,6 +123,29 @@ export class MTangoConnector extends tangojs.Connector {
         console.error('Network error:', error)
       }
     })
+  }
+
+  /**
+   * @return {Promise<string,Error>}
+   */
+  _default_tango_host () {
+    return this._tango_hosts().then(obj => {
+      const hosts = Object.keys(obj)
+      console.log(hosts)
+      const endpoint = obj[hosts[0]]
+      console.log(endpoint)
+      return endpoint
+    })
+  }
+
+  /**
+   * @return {Promise<string,Error>}
+   */
+  _tango_hosts () {
+
+    // 'http://localhost:8080/tango/rest/rc3/hosts'
+    return this._fetch('get', ``, undefined, this._hosts_endpoint )
+      .then(hosts => { return hosts })
   }
 
   /**
