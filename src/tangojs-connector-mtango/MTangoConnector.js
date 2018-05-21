@@ -78,7 +78,11 @@ export class MTangoConnector extends tangojs.Connector {
     const authorization = btoaFn(`${username}:${password}`)
 
     this._headers = {
-      'Authorization': `Basic ${authorization}`
+      'Authorization': `Basic ${authorization}`,
+      // If we use always JSON content
+      //"Content-Type": 'application/json',
+      "Content-Type": 'text/plain',
+      "X-Content-Type-Options": "nosniff"
     }
   }
 
@@ -107,12 +111,19 @@ export class MTangoConnector extends tangojs.Connector {
   _fetch (method, address, body = undefined, endpoint=undefined) {
     if (endpoint === undefined)
         endpoint = this._endpoint;
+    // CHROME BUG
+    // "cast" to string otherwise Chrome does not send
+    // the argument when using put with the argument "*"
+    var b = body ? `${body}` : undefined;
     return fetchFn(`${endpoint}/${address}`, {
       method: method,
       mode: 'cors',
       credentials: 'include',
       headers: this._headers,
-      body
+      cache: 'default',
+      // If we use always JSON content
+      //body:  JSON.stringify(body)
+      body: b
     }).then(response => {
       return response.ok ? response.json() : Promise.reject(response)
     }).catch(error => {
@@ -389,6 +400,7 @@ export class MTangoConnector extends tangojs.Connector {
     // FIXME handle result
 
     const input = argin ? argin.value : ''
+    console.log(`Command ${devname} command ${cmdname} argin ${input}`)
     return this._fetch('put', `devices/${devname}/commands/${cmdname}`, input)
   }
 
