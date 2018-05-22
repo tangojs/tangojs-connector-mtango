@@ -27,12 +27,12 @@
   },
   "homepage": "https://github.com/tangojs/tangojs-connector-mtango#readme",
   "devDependencies": {
-    "eslint": "^2.8.0",
-    "rollup": "^0.26.0",
+    "eslint": "^4.19.1",
+    "rollup": "^0.59.2",
     "tangojs-core": "^0.4.0"
   },
   "dependencies": {
     "btoa": "^1.1.2",
-    "node-fetch": "^1.5.1"
+    "node-fetch": "^2.1.2"
   }
 }

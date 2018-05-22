@@ -1,6 +1,6 @@
 import * as tangojs from 'tangojs-core'
-import * as fetchFn from 'node-fetch'
-import * as btoaFn from 'btoa'
+import * as nodefetch from 'node-fetch'
+import * as btoa from 'btoa'
 
 function none()
 {
@@ -74,7 +74,8 @@ export class MTangoConnector extends tangojs.Connector {
 
     this._username = username
     this._password = password
-
+    // calling a namespace is straightforwardly impossible with ES modules
+    let btoaFn = btoa // *-* MaGiC Happens Here *-*
     const authorization = btoaFn(`${username}:${password}`)
 
     this._headers = {
@@ -107,6 +108,9 @@ export class MTangoConnector extends tangojs.Connector {
   _fetch (method, address, body = undefined, endpoint=undefined) {
     if (endpoint === undefined)
         endpoint = this._endpoint;
+
+    // calling a namespace is straightforwardly impossible with ES modules
+    let fetchFn = nodefetch // *-* MaGiC Happens Here *-*
     return fetchFn(`${endpoint}/${address}`, {
       method: method,
       mode: 'cors',
